@@ -1,0 +1,7 @@
+// Example
+{
+	"settings": {
+		"markurl_enabled": false, // bool
+		"markurl_url": "https://foo.bar/script.php"
+	}
+}
