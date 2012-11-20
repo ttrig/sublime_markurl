@@ -11,12 +11,13 @@
 '''
 
 import os
+import sys
 import httplib
+import string
 import threading
 import sublime
 import sublime_plugin
 from urlparse import urlparse
-
 
 # Event listener
 class MarkurlListener(sublime_plugin.EventListener):
@@ -96,7 +97,7 @@ class Request(threading.Thread):
 	def __init__(self, url_object, timeout=6):
 		self.url_object = url_object
 		self.timeout = timeout
-		self.result = None
+		self.result = ""
 		self.funcs = {
 			'http':		httplib.HTTPConnection,
 			'https':	httplib.HTTPSConnection
@@ -105,20 +106,33 @@ class Request(threading.Thread):
 
 	def run(self):
 		try:
-			c = self.funcs[self.url_object.scheme](self.url_object.netloc, timeout=self.timeout)
-			c.request("GET", self.url_object.path)
-			response = c.getresponse()
-
-			if response.status == 200:
-				self.result = response.read()
-				return
+		# If on linux i assume curl is installed...
+			if sys.platform.startswith('linux'):
+				status = 0
+				result = ''
+				response = os.popen('curl -fk -e "" -A Markurl -w "%{http_code}" ' + self.url_object.geturl())
+				rows = response.readlines()
+				if len(rows) > 0 and rows[-1] == '200':
+					del rows[-1]
+					for i in rows:
+						result += i
+					self.result = result
+					return
+				err = 'curl failed.'
 			else:
+				c = self.funcs[self.url_object.scheme](self.url_object.netloc, timeout=self.timeout)
+				c.request('GET', self.url_object.path)
+				response = c.getresponse()
+				if response.status == 200:
+					self.result = response.read()
+					return
 				err = '%s: http(s) response: %s %s' % (__name__, response.status, response.reason)
 
 		except (httplib.HTTPException) as (e):
 			err = '%s: error %s contacting %s.' % (__name__, str(e.code), self.url_object.netloc)
 		except Exception as e:
 			err = str(e)
-		sublime.error_message(err)
+		sublime.error_message("Markurl: " + err)
 		self.result = False
+
 #eoc
