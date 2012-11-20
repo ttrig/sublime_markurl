@@ -98,10 +98,6 @@ class Request(threading.Thread):
 		self.url_object = url_object
 		self.timeout = timeout
 		self.result = ""
-		self.funcs = {
-			'http':		httplib.HTTPConnection,
-			'https':	httplib.HTTPSConnection
-		}
 		threading.Thread.__init__(self)
 
 	def run(self):
@@ -120,7 +116,11 @@ class Request(threading.Thread):
 					return
 				err = 'curl failed.'
 			else:
-				c = self.funcs[self.url_object.scheme](self.url_object.netloc, timeout=self.timeout)
+				funcs = {
+					'http':		httplib.HTTPConnection,
+					'https':	httplib.HTTPSConnection
+				}
+				c = funcs[self.url_object.scheme](self.url_object.netloc, timeout=self.timeout)
 				c.request('GET', self.url_object.path)
 				response = c.getresponse()
 				if response.status == 200:
